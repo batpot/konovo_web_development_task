@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proizvodi</title>
+
+    <style>
+        .proizvodi {
+            display: flex;
+            justify-content: space-around;
+            flex-wrap: wrap;
+        }
+
+        .proizvod {
+            flex-basis: 30%;
+        }
+    </style>
+</head>
+<body>
+    <div class="proizvodi">
+        {% for p in proizvodi %}
+        <div class="proizvod">
+            <p> {{p}} </p>
+            <h1> {{p.naziv}} </h1>
+            <p>Cena: {{p.cena}}</p>
+            <p>Kolicina: {{p.kolicina}}</p>
+        </div>
+
+        {% endfor %}
+    </div>
+</body>
+</html>
