@@ -1,16 +1,11 @@
 from flask import Flask, redirect, url_for, request, render_template, session, jsonify, make_response
 from flask_mysqldb import MySQL
-from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import check_password_hash, generate_password_hash
-from datetime import datetime, timezone, timedelta
 from functools import wraps
 import mysql.connector
 import jwt
 import uuid
 
-#import sqlalchemy as db
-
-#engine = db.create_engine('dialect+driver://user:pass@host:port/db')
 
 app = Flask(__name__)
 
@@ -20,7 +15,6 @@ app.config['MYSQL_HOST'] = 'localhost'
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = ''
 app.config['MYSQL_DB'] = 'login_system'
-JWT_SECRET_KEY="web_development_task"
 
 mydb = mysql.connector.connect(
     host = "localhost",
@@ -31,29 +25,93 @@ mydb = mysql.connector.connect(
 
 
 ########################################################################################
-class Proizvod:
-    naziv : str
-    cena : int
-    kolicina : int
-    
-    def __init__(self, naziv: str, cena: int, kolicina: int) -> None:
-        self.naziv = naziv
-        self.cena = cena
-        self.kolicina = kolicina
+class Product:
+    pid : int
+    name : str
+    category_id : int
+    category : str
+    brand : str
+    price : float
+    speed : float
+    stock : int
+    image_src : str
+    description : str
+        
+    def __init__(self, pid: int, name: str, category_id : int, category : str, brand : str, 
+                 price : float, speed : float, stock : int, image_src : str, description : str) -> None:
+        self.pid = pid
+        self.name = name
+        self.category_id = category_id
+        self.category = category
+        self.brand = brand
+        self.price = price
+        self.speed = speed
+        self.stock = stock
+        self.image_src = image_src
+        self.description = description
     def __str__(self) -> str:
-        return f"Naziv: {self.naziv} Cena: {self.cena} Kolicina {self.kolicina} ukupno {self.cena*self.kolicina}"
+        return f"Naziv: {self.name} Kategorija: {self.category} Brend: {self.brand} Brzina: {self.speed} Cena: {self.price} Kolicina {self.stock} Opis: {self.description}"
+
+def bytearray_into_tuple(tuple_input):
+    tuple_input = list(tuple_input)
+    n = len(tuple_input)
+    
+    for i in range(n):
+        if isinstance(tuple_input[i], bytearray):
+            tuple_input[i] = tuple_input[i].decode()
+    
+    return tuple_input
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        print('gg')
+        token = request.cookies.get('jwt_token')
+        print(token)
+        if not token:
+            return jsonify({'error': 'token is missing'}), 403
+        try:
+            print('try')
+            jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
+        except Exception as error:
+            return jsonify({'error': 'token is invalid/expired'})
+        print('*')
+        return f(*args, **kwargs)
+    return decorated
 
 @app.route("/products")
+@token_required
 def products():
-    p1 = Proizvod("stampac", 12000, 3)
-    p2 = Proizvod("monitor", 30000, 13)
-    p3 = Proizvod("tastatura", 3000, 20)
+    cursor = mydb.cursor(prepared = True)
+    sql_statement = "SELECT * FROM products"
+    cursor.execute(sql_statement)
+    data = cursor.fetchall()
+    cursor.close()
     
-    p = [p1, p2, p3]
+    data = bytearray_into_tuple(data)
     
+    n = len(data)
+    products = []
+        
+    for i in range(n):
+        data[i] = bytearray_into_tuple(data[i])
+    
+        pid = data[i][0]
+        name = data[i][1]
+        category_id = data[i][2]
+        category = data[i][3]
+        brand = data[i][4]
+        price = data[i][5]
+        speed = data[i][6]
+        stock = data[i][7]
+        image_src = data[i][8]
+        description = data[i][9]
+        p = Product(pid, name, category_id, category, brand, price, speed, stock, image_src, description)
+        products.append(p)
+            
     return render_template(
         "products.html",
-        proizvodi = p
+        products = products
     )
 ########################################################################################
 
@@ -134,7 +192,6 @@ def login():
         return render_template('login.html')
     
     elif request.method == 'POST':
-        auth = request.authorization
         user = request.form['email'] # request.form je oblika ImmutableMultiDict([('email', 'ss@gmail.com'), ('pass', 'ss')])
         password = request.form['pass']
         #user = User.query.filter_by(email=email).first()
@@ -177,36 +234,23 @@ def login():
             return response
         else:
             return "greska" 
-        
-def token_required(f):
-    @wraps(f)
-    def decorated(*args, **kwargs):
-        print('gg')
-        token = request.cookies.get('jwt_token')
-        print(token)
-        if not token:
-            return jsonify({'error': 'token is missing'}), 403
-        try:
-            print('try')
-            jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
-        except Exception as error:
-            return jsonify({'error': 'token is invalid/expired'})
-        print('*')
-        return f(*args, **kwargs)
-    return decorated
 
+@app.route('/logout')
+def logout():
+    if 'username' in session:
+        session.pop('username')
+        session.clear()
+        response = make_response(redirect(url_for('login')))
+        response.set_cookie('jwt_token', '', max_age=0)
+        print('cookie deleted')
+
+        return response
+    
 @app.route("/access")
 @token_required
 def access():
     return jsonify({'message': 'valid jwt token'})        
 
-@app.route('/products', methods=['GET'])
-def get_data():
-    cur = mysql.connection.cursor()
-    cur.execute('''SELECT * FROM products''')
-    data = cur.fetchall()
-    cur.close()
-    return jsonify(data)
 
 if __name__ == '__main__':
     app.run()

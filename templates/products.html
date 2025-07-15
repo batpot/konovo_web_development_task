@@ -3,31 +3,40 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Proizvodi</title>
+    <title>Products</title>
 
     <style>
-        .proizvodi {
+        img {
+            width: 300px;
+            height: 300px;
+        }
+
+        .products {
             display: flex;
             justify-content: space-around;
             flex-wrap: wrap;
         }
 
-        .proizvod {
+        .product {
             flex-basis: 30%;
         }
+
     </style>
 </head>
 <body>
-    <div class="proizvodi">
-        {% for p in proizvodi %}
-        <div class="proizvod">
-            <p> {{p}} </p>
-            <h1> {{p.naziv}} </h1>
-            <p>Cena: {{p.cena}}</p>
-            <p>Kolicina: {{p.kolicina}}</p>
+    <p class="logout">
+        <a href="/logout">Logout</a>
+    </p>
+    <div class="products">
+        {% for p in products %}
+        <div class="product">
+            <h1> {{p.name}} </h1>
+            <img src="{{p.image_src}}" alt = "">
+            <p>Cena: {{p.price}}</p>            
         </div>
 
         {% endfor %}
+
     </div>
 </body>
 </html>
