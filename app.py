@@ -5,7 +5,7 @@ from functools import wraps
 import mysql.connector
 import jwt
 import uuid
-
+import re
 
 app = Flask(__name__)
 
@@ -22,7 +22,6 @@ mydb = mysql.connector.connect(
     password = "",
     database = "login_system"
 )
-
 
 ########################################################################################
 class Product:
@@ -50,7 +49,7 @@ class Product:
         self.image_src = image_src
         self.description = description
     def __str__(self) -> str:
-        return f"Naziv: {self.name} Kategorija: {self.category} Brend: {self.brand} Brzina: {self.speed} Cena: {self.price} Kolicina {self.stock} Opis: {self.description}"
+        return f"Id proizvoda: {self.pid} Naziv: {self.name} Kategorija: {self.category} Brend: {self.brand} Brzina: {self.speed} Cena: {self.price} Kolicina {self.stock} Opis: {self.description}"
 
 def bytearray_into_tuple(tuple_input):
     tuple_input = list(tuple_input)
@@ -65,25 +64,44 @@ def bytearray_into_tuple(tuple_input):
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        print('gg')
         token = request.cookies.get('jwt_token')
-        print(token)
         if not token:
             return jsonify({'error': 'token is missing'}), 403
         try:
-            print('try')
             jwt.decode(token, app.config['SECRET_KEY'], algorithms="HS256")
         except Exception as error:
             return jsonify({'error': 'token is invalid/expired'})
-        print('*')
         return f(*args, **kwargs)
     return decorated
 
-@app.route("/products")
-@token_required
-def products():
+def update_products(products):
+    for p in products:   
+        # increase the price of the 'monitors'
+        # if p.category == 'Monitors':
+        #     #print(f"stara cena: {p.price}")
+        #     p.price *= 1.1
+        #     #print(f"nova cena: {p.price}")
+
+        #     cursor = mydb.cursor(prepared=True)
+        #     sql = "UPDATE products SET price = ? WHERE category = 'Monitors'";
+        #     vrednosti = (p.price, )    
+        #     cursor.execute(sql, vrednosti)
+        #     mydb.commit()
+
+        # change 'speed' into 'performances'
+        p.description = re.sub('speed', 'performance', p.description, flags=re.IGNORECASE)
+        id = p.pid
+        #print(p.description)
+        
+        cursor = mydb.cursor(prepared=True)
+        sql = "UPDATE products SET description = ? WHERE pid = ?" #TODO efikasnije
+        vrednosti = (p.description, id, )    
+        cursor.execute(sql, vrednosti)
+        mydb.commit()
+
+def fetch_products(sql_statement):
     cursor = mydb.cursor(prepared = True)
-    sql_statement = "SELECT * FROM products"
+    #sql_statement = "SELECT * FROM products"
     cursor.execute(sql_statement)
     data = cursor.fetchall()
     cursor.close()
@@ -109,10 +127,80 @@ def products():
         p = Product(pid, name, category_id, category, brand, price, speed, stock, image_src, description)
         products.append(p)
             
+    return products
+
+# TODO api
+def fetch_all_products():
+    products = fetch_products("SELECT * FROM products")
+    return products
+
+    
+@app.route('/products')
+@token_required
+def show_products():    
+    products = fetch_all_products()
+    update_products(products)
+    
     return render_template(
-        "products.html",
+        'products.html',
+        products = products)
+    
+@app.route('/search', methods = ["POST", "GET"])
+def search():   
+    if request.method == "GET":
+        query = request.args.get('search_term')
+        print(query)
+    
+        if query:  
+            print('*')
+            products = fetch_products(f"SELECT * FROM products WHERE name LIKE '%{query}%'")
+    if request.method == "POST":
+        target_categories = request.form['category_name']
+        print(target_categories)
+    
+        products = []
+        print('fff')
+        products = fetch_products(f"SELECT * FROM products WHERE category LIKE '%{target_categories}%'")
+        
+    return render_template(
+            'products.html',
+            products = products
+        )
+   
+@app.route('/select', methods = ["POST", "GET"])
+def select():
+    target_categories = request.form['category_name']
+    products = fetch_products(f"SELECT * FROM products WHERE category LIKE '%{target_categories}%'")
+
+    return render_template(
+        'products.html',
         products = products
     )
+    
+@app.route('/product/id/<id>')
+def show_product(id):
+    #product = fetch_products("SELECT * FROM products WHERE pid LIKE '%id%'")
+    
+    cursor = mydb.cursor(prepared = True)
+    sql_statement = "SELECT * FROM products WHERE pid=?"
+    values = (id,)
+    cursor.execute(sql_statement, values)
+    product = cursor.fetchone()
+    cursor.close()
+    
+    #print(id)
+    #print(product)
+    product = bytearray_into_tuple(product)
+    product = Product(product[0], product[1], product[2], product[3], product[4], product[5],
+                      product[6], product[7], product[8], product[9])
+    
+    return render_template(
+        'product.html',
+        p = product
+    )
+    
+    
+    
 ########################################################################################
 
 mysql = MySQL(app)
@@ -228,7 +316,7 @@ def login():
         jwt_token = generate_jwt_token({"id": public_id})
     
         if jwt_token:
-            response = make_response(redirect(url_for('products')))
+            response = make_response(redirect(url_for('show_products')))
             response.set_cookie('jwt_token', jwt_token)
 
             return response
@@ -253,7 +341,7 @@ def access():
 
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
     
     
 

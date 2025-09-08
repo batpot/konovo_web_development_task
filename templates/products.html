@@ -4,35 +4,53 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Products</title>
+    <link rel="stylesheet" href="/static/css/style.css">
 
-    <style>
-        img {
-            width: 300px;
-            height: 300px;
-        }
 
-        .products {
-            display: flex;
-            justify-content: space-around;
-            flex-wrap: wrap;
-        }
-
-        .product {
-            flex-basis: 30%;
-        }
-
-    </style>
 </head>
 <body>
     <p class="logout">
         <a href="/logout">Logout</a>
     </p>
+    <p>
+        <form id="search-form" action="/search" method="GET">
+            <input name="search_term" type="text" placeholder="Unesite pojam...">
+            <input type="submit" value="pretrazi">
+
+            <label for="category">Choose a category:</label>
+            
+            <select name="category_name" id="category">
+                {% for p in products %}
+                    <option value="{{p.category}}">{{p.category}}</option>
+                {% endfor %}
+            </select>
+        </form>
+
+    </p>
+    <p>
+        <form action="/select" method="POST">
+            <label for="category">Choose a category:</label>
+            
+            <select name="category_name" id="category">
+                {% for p in products %}
+                    <option value="{{p.category}}">{{p.category}}</option>
+                {% endfor %}
+            </select>
+
+            <input type="submit" value="pretrazi">
+        </form> 
+    </p>
+
+
     <div class="products">
         {% for p in products %}
-        <div class="product">
+        <!----m <input type="hidden"  id="my_variable" value="{{ p }}"> ---->
+        <div class="clickable-product" src="/product/id/{{p.pid}}">
+
             <h1> {{p.name}} </h1>
-            <img src="{{p.image_src}}" alt = "">
-            <p>Cena: {{p.price}}</p>            
+            <img src="{{p.image_src}}" alt = "" id="image_small">
+            <p>Cena: {{p.price}}</p> 
+            <a href="/product/id/{{p.pid}}">Click Me!</a>          
         </div>
 
         {% endfor %}

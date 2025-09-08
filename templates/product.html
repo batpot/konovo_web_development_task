@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Proizvod</title>
+    <link rel="stylesheet" href="/static/css/style.css">
+</head>
+
+<body>
+    <div class="product-wrapper">
+        <div class="image-big">
+            <img src="{{p.image_src}}" alt = "" >
+        </div>
+
+        <div class="product-text">
+            <h1>{{p.name}}</h1>
+            <h3>Cena: {{p.price}}</h3>
+            <p>
+                Opis proizvoda: {{p.description}}
+            </p>
+        </div>
+
+    </div>
+    
+</body>
+</html>
